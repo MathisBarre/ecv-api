@@ -2,10 +2,20 @@ import { FastifyPluginAsync } from "fastify";
 import { default as axios } from "axios";
 
 const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-  fastify.get("/", async function (request, reply) {
+  fastify.get("/:searchQuery", async function (request, reply) {
+    const { searchQuery } = request.params as any;
+
     const { data } = await axios.get(
-      "https://www.prevision-meteo.ch/services/json/nantes"
+      `https://www.prevision-meteo.ch/services/json/${searchQuery}`
     );
+
+    if (!data.city_info) {
+      return reply.status(400).send({
+        message: "Be sure to provide a valid query string",
+        error: "Bad request",
+        statusCode: 400
+      })
+    }
 
     const hoursKey: string[] = [];
     for (let i = 0; i <= 23; i++) {
@@ -43,7 +53,6 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         iconBig: data.current_condition.icon_big,
       },
       next5DaysConditions: daysKey.map((dayKey) => {
-        request.log.info("dayKey " + dayKey)
         const thisDay = data[dayKey]
         return {
           date: thisDay.date.split(".").reverse().join("-"),
