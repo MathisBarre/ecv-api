@@ -1,104 +1,52 @@
 import { FastifyPluginAsync } from "fastify";
-import { default as axios } from "axios";
+import getCityWeather from "../services/getCityWeather";
 
 const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get("/:searchQuery", async function (request, reply) {
     const { searchQuery } = request.params as any;
 
-    const { data } = await axios.get(
-      `https://www.prevision-meteo.ch/services/json/${searchQuery}`
-    );
+    try {
+      const weather = await getCityWeather(searchQuery);
 
-    if (!data.city_info) {
-      return reply.status(400).send({
-        message: "Be sure to provide a valid query string",
-        error: "Bad request",
-        statusCode: 400
-      })
+      return {
+        ...weather,
+        next5DaysConditions: weather.next5DaysConditions.map(
+          ({ hourly, ...rest }) => ({ ...rest })
+        ),
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNKOWN_CITY") {
+        return reply.status(400).send({
+          message: "Be sure to provide a valid query string",
+          error: "Bad request",
+          statusCode: 400,
+        });
+      }
+
+      throw error;
     }
+  });
 
-    const hoursKey: string[] = [];
-    for (let i = 0; i <= 23; i++) {
-      hoursKey.push(i + "H00");
+  fastify.get("/:searchQuery/:date", async function (request, reply) {
+    const { searchQuery, date } = request.params as any;
+
+    try {
+      const weather = await getCityWeather(searchQuery);
+
+      return weather.next5DaysConditions.filter(
+        (dayCondition) => dayCondition.date === date
+      )[0];
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNKOWN_CITY") {
+        return reply.status(400).send({
+          message: "Be sure to provide a valid query string",
+          error: "Bad request",
+          statusCode: 400,
+        });
+      }
+
+      throw error;
     }
-
-    const daysKey: string[] = [];
-    for (let i = 0; i <= 4; i++) {
-      daysKey.push("fcst_day_" + i);
-    }
-
-    return {
-      dataProvider: "http://www.prevision-meteo.ch/",
-      currentConditions: {
-        datetime:
-          data.current_condition.date.split(".").reverse().join("-") +
-          "T" +
-          data.current_condition.hour +
-          "+02:00",
-        condition: data.current_condition.condition,
-        conditionKey: data.current_condition.condition_key,
-        temperature: {
-          value: data.current_condition.tmp,
-          unit: "°C",
-        },
-        windSpeed: {
-          value: data.current_condition.wnd_spd,
-          unit: "km/h",
-        },
-        humidity: {
-          value: data.current_condition.humidity,
-          unit: "%",
-        },
-        icon: data.current_condition.icon,
-        iconBig: data.current_condition.icon_big,
-      },
-      next5DaysConditions: daysKey.map((dayKey) => {
-        const thisDay = data[dayKey]
-        return {
-          date: thisDay.date.split(".").reverse().join("-"),
-          condition: thisDay.condition,
-          conditionKey: thisDay.condition_key,
-          icon: thisDay.icon,
-          iconBig: thisDay.icon_big,
-          temperature: {
-            min: thisDay.tmin,
-            max: thisDay.tmax,
-            unit: "°C",
-          },
-          hourly: hoursKey.map((hour) => {
-            const hourString = (hour.length === 4 ? "0" + hour : hour).replace(
-              "H",
-              ":"
-            );
-            
-            const thisHour = data[dayKey].hourly_data[hour]
-
-            return {
-              datetime:
-                data[dayKey].date.split(".").reverse().join("-") +
-                "T" +
-                hourString +
-                "+02:00",
-              condition: thisHour.CONDITION,
-              conditionKey: thisHour.CONDITION_KEY,
-              temperature: {
-                value: thisHour.TMP2m,
-                unit: "°C",
-              },
-              windSpeed: {
-                value: thisHour.WNDSPD10m,
-                unit: "km/h",
-              },
-              humidity: {
-                value: thisHour.RH2m,
-                unit: "%",
-              },
-              icon: thisHour.ICON,
-            };
-          }),
-        };
-      }),
-    };
   });
 };
 
