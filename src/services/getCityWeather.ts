@@ -26,7 +26,7 @@ export default async function getCityWeather(searchQuery: string) {
         data.current_condition.date.split(".").reverse().join("-") +
         "T" +
         data.current_condition.hour +
-        "+02:00",
+        "+01:00",
       condition: data.current_condition.condition,
       conditionKey: data.current_condition.condition_key,
       temperature: {
@@ -70,7 +70,7 @@ export default async function getCityWeather(searchQuery: string) {
               data[dayKey].date.split(".").reverse().join("-") +
               "T" +
               hourString +
-              "+02:00",
+              "+01:00",
             condition: thisHour.CONDITION,
             conditionKey: thisHour.CONDITION_KEY,
             temperature: {
