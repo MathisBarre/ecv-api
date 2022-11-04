@@ -6,7 +6,11 @@ export default async function getCityWeather(searchQuery: string) {
   );
 
   if (!data.city_info) {
-    throw new Error("UNKOWN_CITY")
+    throw new Error("UNKOWN_CITY");
+  }
+
+  if (Math.random() > 0.8) {
+    throw new Error("FAKE_ERROR");
   }
 
   const hoursKey: string[] = [];
@@ -45,7 +49,7 @@ export default async function getCityWeather(searchQuery: string) {
       iconBig: data.current_condition.icon_big,
     },
     next5DaysConditions: daysKey.map((dayKey) => {
-      const thisDay = data[dayKey]
+      const thisDay = data[dayKey];
       return {
         date: thisDay.date.split(".").reverse().join("-"),
         condition: thisDay.condition,
@@ -62,8 +66,8 @@ export default async function getCityWeather(searchQuery: string) {
             "H",
             ":"
           );
-          
-          const thisHour = data[dayKey].hourly_data[hour]
+
+          const thisHour = data[dayKey].hourly_data[hour];
 
           return {
             datetime:
